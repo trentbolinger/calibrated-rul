@@ -52,9 +52,10 @@ def plot_rul_distribution(train_df: pd.DataFrame) -> None:
 
 
 def count_operating_conditions(df: pd.DataFrame) -> int:
-    # op settings are continuous but cluster around a small number of discrete
-    # regimes; rounding collapses sensor noise so distinct regimes can be counted
-    rounded = df[["op_setting_1", "op_setting_2", "op_setting_3"]].round(2)
+    # op settings are continuous but cluster tightly around a small number of
+    # discrete regimes; 2-decimal rounding still picks up simulation noise
+    # within a regime, so round to whole units to collapse each regime to one row
+    rounded = df[["op_setting_1", "op_setting_2", "op_setting_3"]].round(0)
     return len(rounded.drop_duplicates())
 
 
