@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/trent/Downloads/**)",
+      "Bash(printenv)",
+      "Bash(env)",
+      "Bash(cd \"c:/Users/trent/OneDrive/Documents/calibrated-rul\" && mkdir -p data && ls data)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\trent\\OneDrive\\Documents\\calibrated-rul"
+    ]
+  }
+}
