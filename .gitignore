@@ -1,0 +1,30 @@
+# Environment & secrets
+.env
+*.env
+kaggle.json
+KAGGLE_API_TOKEN
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Model artifacts (large, not meant to live in git)
+*.pth
+*.pt
+outputs/*.pth
+
+# Raw dataset (re-downloadable via Kaggle, shouldn't be committed)
+data/raw/
+data/*.txt
+
+# IDE / OS clutter
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Notebooks (if you end up using any for exploration)
+.ipynb_checkpoints/
