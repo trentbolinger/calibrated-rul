@@ -1,5 +1,6 @@
 """Sequence preprocessing for the C-MAPSS dataset."""
 
+import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
@@ -27,3 +28,30 @@ class SequencePreprocessor:
         df = df.copy()
         df[SENSOR_COLUMNS] = self.scaler.transform(df[SENSOR_COLUMNS])
         return df
+
+    def create_sequences(self, df: pd.DataFrame, is_train: bool) -> tuple[np.ndarray, np.ndarray]:
+        X_list = []
+        y_list = []
+
+        for _, engine_df in df.groupby("unit_number"):
+            engine_df = engine_df.sort_values("time_cycle")
+            sensors = engine_df[SENSOR_COLUMNS].to_numpy()
+            rul = engine_df["RUL"].to_numpy()
+            n_cycles = len(engine_df)
+
+            if n_cycles < self.sequence_length:
+                # shorter than one window; can't happen for FD001 but would
+                # otherwise wrap around negative indices below
+                continue
+
+            if is_train:
+                starts = range(0, n_cycles - self.sequence_length + 1)
+            else:
+                starts = [n_cycles - self.sequence_length]
+
+            for start in starts:
+                end = start + self.sequence_length
+                X_list.append(sensors[start:end])
+                y_list.append(rul[end - 1])
+
+        return np.array(X_list), np.array(y_list)
