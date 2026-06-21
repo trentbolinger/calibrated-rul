@@ -19,8 +19,12 @@ SENSORS_TO_PLOT = ["sensor_2", "sensor_3", "sensor_4", "sensor_7", "sensor_11", 
 N_ENGINES_TO_PLOT = 5
 
 # published train trajectory counts per the C-MAPSS documentation; used to catch
-# a mislabeled/swapped train-test file before it quietly corrupts the comparison
-EXPECTED_TRAIN_ENGINE_COUNTS = {"FD001": 100, "FD002": 260, "FD003": 100, "FD004": 248}
+# a mislabeled/swapped train-test file before it quietly corrupts the comparison.
+# Note: FD004 is 249 here vs. 248 in the original NASA paper -- a known minor
+# discrepancy in the behrad3d/nasa-cmaps Kaggle mirror, confirmed not a
+# train/test mislabeling (train avg. ~246 cycles/run-to-failure vs. test's
+# ~166 cycles/truncated, as expected).
+EXPECTED_TRAIN_ENGINE_COUNTS = {"FD001": 100, "FD002": 260, "FD003": 100, "FD004": 249}
 
 
 def plot_sensor_trends(train_df: pd.DataFrame) -> None:
