@@ -55,3 +55,24 @@ class SequencePreprocessor:
                 y_list.append(rul[end - 1])
 
         return np.array(X_list), np.array(y_list)
+
+    def split_calibration_set(
+        self, df: pd.DataFrame, calib_fraction: float = 0.2
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        # split by engine ID, not by window -- windows from the same engine
+        # must never end up in both groups, or conformal coverage numbers
+        # get quietly inflated by leakage
+        engine_ids = df["unit_number"].unique()
+        n_calib = round(len(engine_ids) * calib_fraction)
+
+        rng = np.random.default_rng()
+        calib_ids = rng.choice(engine_ids, size=n_calib, replace=False)
+        train_ids = np.setdiff1d(engine_ids, calib_ids)
+
+        train_df = df[df["unit_number"].isin(train_ids)]
+        calib_df = df[df["unit_number"].isin(calib_ids)]
+
+        X_train, y_train = self.create_sequences(train_df, is_train=True)
+        X_calib, y_calib = self.create_sequences(calib_df, is_train=True)
+
+        return X_train, y_train, X_calib, y_calib, train_ids, calib_ids
