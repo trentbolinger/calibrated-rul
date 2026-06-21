@@ -50,7 +50,9 @@ def plot_rul_distribution(train_df: pd.DataFrame) -> None:
     rul = max_cycle - train_df["time_cycle"]
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.hist(rul, bins=50)
+    # bin width of 50 doesn't align with integer cycle values, producing a
+    # sawtooth artifact; one bin per cycle removes it
+    ax.hist(rul, bins=range(0, int(rul.max()) + 2))
     ax.set_xlabel("RUL (cycles)")
     ax.set_ylabel("count")
     ax.set_title("FD001: RUL distribution (uncapped, train set)")
