@@ -18,6 +18,10 @@ OUTPUT_DIR = Path("outputs")
 SENSORS_TO_PLOT = ["sensor_2", "sensor_3", "sensor_4", "sensor_7", "sensor_11", "sensor_15"]
 N_ENGINES_TO_PLOT = 5
 
+# published train trajectory counts per the C-MAPSS documentation; used to catch
+# a mislabeled/swapped train-test file before it quietly corrupts the comparison
+EXPECTED_TRAIN_ENGINE_COUNTS = {"FD001": 100, "FD002": 260, "FD003": 100, "FD004": 248}
+
 
 def plot_sensor_trends(train_df: pd.DataFrame) -> None:
     engine_ids = train_df["unit_number"].unique()[:N_ENGINES_TO_PLOT]
@@ -63,10 +67,21 @@ def build_comparison_table() -> pd.DataFrame:
     rows = []
     for subset in ["FD001", "FD002", "FD004"]:
         train_df = CMAPSSLoader(DATA_DIR, subset=subset).load_train()
+        engine_count = train_df["unit_number"].nunique()
+
+        expected = EXPECTED_TRAIN_ENGINE_COUNTS[subset]
+        if engine_count != expected:
+            print(
+                f"WARNING: {subset} train_{subset}.txt has {engine_count} engines, "
+                f"expected {expected}. This usually means train/test files were "
+                f"swapped or mislabeled during download -- verify the raw file "
+                f"before trusting this row."
+            )
+
         rows.append(
             {
                 "subset": subset,
-                "engine_count": train_df["unit_number"].nunique(),
+                "engine_count": engine_count,
                 "operating_conditions": count_operating_conditions(train_df),
             }
         )
