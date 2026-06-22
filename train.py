@@ -1,8 +1,14 @@
 """End-to-end training pipeline: load FD001, preprocess, train LSTMRULModel."""
 
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+
 from config import build_model
 from data.loader import CMAPSSLoader
 from data.preprocessor import SENSOR_COLUMNS, SequencePreprocessor
+
+OUTPUT_DIR = Path("outputs")
 
 CONFIG = {
     "data_dir": "data/raw",
@@ -22,6 +28,24 @@ CONFIG = {
 }
 
 
+def plot_training_curves(history: dict) -> None:
+    epochs = range(1, len(history["train_loss"]) + 1)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(epochs, history["train_loss"], label="train loss")
+    if any(v is not None for v in history["val_loss"]):
+        ax.plot(epochs, history["val_loss"], label="val loss")
+    if history["best_epoch"] is not None:
+        ax.axvline(history["best_epoch"], linestyle=":", color="gray", label="best model")
+    ax.set_xlabel("epoch")
+    ax.set_ylabel("MSE loss")
+    ax.set_title("Training curves")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(OUTPUT_DIR / "training_curves.png", dpi=150)
+    plt.close(fig)
+
+
 def main() -> None:
     loader = CMAPSSLoader(CONFIG["data_dir"], subset=CONFIG["subset"])
     train_df = loader.load_train()
@@ -39,6 +63,7 @@ def main() -> None:
 
     model = build_model(CONFIG)
     model.fit(X_train, y_train, X_calib, y_calib)
+    plot_training_curves(model.history)
 
     print(f"Training complete. Best model saved to {CONFIG['checkpoint_path']}")
 

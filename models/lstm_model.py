@@ -46,6 +46,7 @@ class LSTMRULModel(BaseRULModel):
         self.batch_size = batch_size
         self.epochs = epochs
         self.checkpoint_path = checkpoint_path
+        self.history = {"train_loss": [], "val_loss": [], "best_epoch": None}
 
     def fit(self, X_train, y_train, X_val=None, y_val=None):
         X_train_t = torch.tensor(X_train, dtype=torch.float32)
@@ -65,6 +66,7 @@ class LSTMRULModel(BaseRULModel):
         best_val_loss = float("inf")
         patience = 10
         epochs_without_improvement = 0
+        self.history = {"train_loss": [], "val_loss": [], "best_epoch": None}
 
         for epoch in range(1, self.epochs + 1):
             self.network.train()
@@ -97,6 +99,11 @@ class LSTMRULModel(BaseRULModel):
                     epochs_without_improvement += 1
             else:
                 val_loss = None
+
+            self.history["train_loss"].append(train_loss)
+            self.history["val_loss"].append(val_loss)
+            if has_val and epochs_without_improvement == 0:
+                self.history["best_epoch"] = epoch
 
             scheduler.step()
 
