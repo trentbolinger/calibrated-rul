@@ -60,6 +60,7 @@ class LSTMRULModel(BaseRULModel):
             y_val_t = torch.tensor(y_val, dtype=torch.float32, device=self.device)
 
         optimizer = torch.optim.Adam(self.network.parameters(), lr=self.lr)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.5)
         criterion = nn.MSELoss()
         best_val_loss = float("inf")
 
@@ -85,8 +86,14 @@ class LSTMRULModel(BaseRULModel):
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss
                     self.save(self.checkpoint_path)
+                    print(
+                        f"New best model at epoch {epoch} - val_loss: {val_loss:.2f}, "
+                        f"saved to {self.checkpoint_path}"
+                    )
             else:
                 val_loss = None
+
+            scheduler.step()
 
             if epoch % 10 == 0:
                 if has_val:
