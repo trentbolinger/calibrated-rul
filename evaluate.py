@@ -17,6 +17,7 @@ from config import build_model
 from data.loader import CMAPSSLoader
 from data.preprocessor import SENSOR_COLUMNS, SequencePreprocessor
 from evaluation.metrics import CalibrationEvaluator
+from evaluation.shift import DistributionShiftAnalyzer
 from uncertainty.conformal import ConformalPredictor
 
 OUTPUT_DIR = Path("outputs")
@@ -24,6 +25,7 @@ OUTPUT_DIR = Path("outputs")
 CONFIG = {
     "data_dir": "data/raw",
     "subset": "FD001",
+    "shift_subsets": ["FD002", "FD004"],
     "sequence_length": 30,
     "rul_cap": 125,
     "calib_fraction": 0.4,
@@ -36,6 +38,38 @@ CONFIG = {
     "dropout": 0.2,
     "checkpoint_path": "outputs/best_model.pth",
 }
+
+
+def load_test_subset(preprocessor: SequencePreprocessor, data_dir: str, subset_name: str):
+    loader = CMAPSSLoader(data_dir, subset=subset_name)
+    test_df = loader.load_test()
+    true_rul = loader.load_test_rul()
+
+    # normalize with the scaler already fit on FD001 train data -- refitting
+    # here would erase the distributional difference this test is meant to measure
+    test_df = preprocessor.normalize(test_df)
+    # create_sequences needs a RUL column but test trajectories are truncated
+    # before failure, so the true label comes from RUL_<subset>.txt instead
+    test_df["RUL"] = 0
+    X_test, _ = preprocessor.create_sequences(test_df, is_train=False)
+
+    return X_test, true_rul
+
+
+def plot_picp_by_subset(results: list[dict], target_coverage: float) -> None:
+    subsets = [r["subset"] for r in results]
+    picps = [r["picp"] for r in results]
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.bar(subsets, picps, color="steelblue")
+    ax.axhline(target_coverage, linestyle=":", color="red", label=f"target ({target_coverage:.0%})")
+    ax.set_ylabel("PICP")
+    ax.set_ylim(0, 1.05)
+    ax.set_title("PICP by subset (distribution shift)")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(OUTPUT_DIR / "picp_by_subset.png", dpi=150)
+    plt.close(fig)
 
 
 def plot_conformal_intervals(preds, lower, upper, true_rul, n_samples: int = 5) -> None:
@@ -62,13 +96,12 @@ def plot_conformal_intervals(preds, lower, upper, true_rul, n_samples: int = 5) 
 def main() -> None:
     loader = CMAPSSLoader(CONFIG["data_dir"], subset=CONFIG["subset"])
     train_df = loader.load_train()
-    test_df = loader.load_test()
-    true_rul = loader.load_test_rul()
 
     preprocessor = SequencePreprocessor(
         sequence_length=CONFIG["sequence_length"], rul_cap=CONFIG["rul_cap"]
     )
-    # scaler is fit on train data only, same as train.py, since it's not persisted to disk
+    # scaler is fit on FD001 train data only, same as train.py, since it's not
+    # persisted to disk -- FD002/FD004 below reuse this same fitted scaler
     preprocessor.fit_scaler(train_df)
 
     train_df = preprocessor.compute_rul(train_df)
@@ -77,11 +110,7 @@ def main() -> None:
         train_df, calib_fraction=CONFIG["calib_fraction"], seed=CONFIG["calib_seed"]
     )
 
-    test_df = preprocessor.normalize(test_df)
-    # create_sequences needs a RUL column but test trajectories are truncated
-    # before failure, so the true label comes from RUL_FD001.txt instead
-    test_df["RUL"] = 0
-    X_test, _ = preprocessor.create_sequences(test_df, is_train=False)
+    X_test, true_rul = load_test_subset(preprocessor, CONFIG["data_dir"], CONFIG["subset"])
 
     model = build_model(CONFIG)
     model.load(CONFIG["checkpoint_path"])
@@ -102,6 +131,22 @@ def main() -> None:
 
     plot_conformal_intervals(preds, lower, upper, true_rul)
     print(f"Conformal interval plot saved to {OUTPUT_DIR / 'conformal_fd001.png'}")
+
+    # distribution shift test -- same trained model and calibrated conformal
+    # predictor, scored against subsets the calibration set never saw
+    analyzer = DistributionShiftAnalyzer(model, conformal)
+    results = [{"subset": CONFIG["subset"], "rmse": rmse, "picp": picp, "sharpness": sharpness}]
+
+    for shift_subset in CONFIG["shift_subsets"]:
+        X_shift, y_shift = load_test_subset(preprocessor, CONFIG["data_dir"], shift_subset)
+        results.append(analyzer.run_shift_test(shift_subset, X_shift, y_shift, alpha=CONFIG["alpha"]))
+
+    comparison_df = analyzer.compare_subsets(results)
+    print("\nDistribution shift comparison:")
+    print(comparison_df.to_string(index=False))
+
+    plot_picp_by_subset(results, target_coverage=1 - CONFIG["alpha"])
+    print(f"\nPICP-by-subset plot saved to {OUTPUT_DIR / 'picp_by_subset.png'}")
 
 
 if __name__ == "__main__":
