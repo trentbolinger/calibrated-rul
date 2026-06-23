@@ -101,41 +101,26 @@ data respectively.
 ---
 
 ## Project Structure
+
+```
 calibrated-rul/
-
 ├── data/
-
-│   ├── loader.py          # CMAPSSLoader — parses raw C-MAPSS files
-
-│   └── preprocessor.py    # SequencePreprocessor — RUL capping,
-
-│                          #   normalization, windowing, calib split
-
+│   ├── loader.py          # CMAPSSLoader — file parsing
+│   └── preprocessor.py    # SequencePreprocessor — windowing, scaling
 ├── models/
-
-│   ├── base.py            # BaseRULModel (abstract interface)
-
-│   └── lstm_model.py      # LSTMRULModel implementation
-
+│   ├── base.py            # BaseRULModel interface
+│   └── lstm_model.py      # LSTMRULModel
 ├── uncertainty/
-
-│   ├── base.py            # BaseUncertaintyWrapper (abstract interface)
-
-│   └── conformal.py       # ConformalPredictor implementation
-
+│   ├── base.py            # BaseUncertaintyWrapper interface
+│   └── conformal.py       # ConformalPredictor
 ├── evaluation/
-
-│   ├── metrics.py         # CalibrationEvaluator (RMSE, PICP, sharpness)
-
+│   ├── metrics.py         # CalibrationEvaluator
 │   └── shift.py           # DistributionShiftAnalyzer
-
-├── config.py              # Central config + build_model() factory
-
+├── config.py              # build_model() factory
 ├── train.py               # Training orchestration
-
-├── evaluate.py            # Evaluation + distribution shift test
-
-└── outputs/               # Plots and saved model (model gitignored)
+├── evaluate.py            # Evaluation + shift test
+└── outputs/               # Plots, saved model (gitignored)
+```
 
 ---
 
