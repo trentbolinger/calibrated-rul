@@ -51,7 +51,12 @@ def load_test_subset(preprocessor: SequencePreprocessor, data_dir: str, subset_n
     # create_sequences needs a RUL column but test trajectories are truncated
     # before failure, so the true label comes from RUL_<subset>.txt instead
     test_df["RUL"] = 0
-    X_test, _ = preprocessor.create_sequences(test_df, is_train=False)
+    X_test, _, valid_engine_ids = preprocessor.create_sequences(test_df, is_train=False)
+
+    # RUL_<subset>.txt is ordered by engine ID (row i -> unit_number i+1);
+    # engines too short for a full window never made it into X_test, so
+    # true_rul must be filtered down to the same engines to stay aligned
+    true_rul = true_rul[[engine_id - 1 for engine_id in valid_engine_ids]]
 
     return X_test, true_rul
 

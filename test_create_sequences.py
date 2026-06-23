@@ -23,7 +23,7 @@ def main() -> None:
     test_df = preprocessor.compute_rul(test_df)
 
     X_train, y_train = preprocessor.create_sequences(train_df, is_train=True)
-    X_test, y_test = preprocessor.create_sequences(test_df, is_train=False)
+    X_test, y_test, valid_engine_ids = preprocessor.create_sequences(test_df, is_train=False)
 
     print(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
     print(f"X_test shape:  {X_test.shape}, y_test shape:  {y_test.shape}")
@@ -36,7 +36,7 @@ def main() -> None:
 
     for engine_id in test_df["unit_number"].unique()[:3]:
         engine_df = test_df[test_df["unit_number"] == engine_id]
-        X_engine, _ = preprocessor.create_sequences(engine_df, is_train=False)
+        X_engine, _, _ = preprocessor.create_sequences(engine_df, is_train=False)
         print(f"test engine {engine_id}: {len(engine_df)} cycles -> {len(X_engine)} window(s)")
 
 

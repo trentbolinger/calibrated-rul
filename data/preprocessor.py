@@ -29,11 +29,14 @@ class SequencePreprocessor:
         df[SENSOR_COLUMNS] = self.scaler.transform(df[SENSOR_COLUMNS])
         return df
 
-    def create_sequences(self, df: pd.DataFrame, is_train: bool) -> tuple[np.ndarray, np.ndarray]:
+    def create_sequences(
+        self, df: pd.DataFrame, is_train: bool
+    ) -> tuple[np.ndarray, np.ndarray] | tuple[np.ndarray, np.ndarray, list]:
         X_list = []
         y_list = []
+        valid_engine_ids = []
 
-        for _, engine_df in df.groupby("unit_number"):
+        for engine_id, engine_df in df.groupby("unit_number"):
             engine_df = engine_df.sort_values("time_cycle")
             sensors = engine_df[SENSOR_COLUMNS].to_numpy()
             rul = engine_df["RUL"].to_numpy()
@@ -48,13 +51,16 @@ class SequencePreprocessor:
                 starts = range(0, n_cycles - self.sequence_length + 1)
             else:
                 starts = [n_cycles - self.sequence_length]
+                valid_engine_ids.append(int(engine_id))
 
             for start in starts:
                 end = start + self.sequence_length
                 X_list.append(sensors[start:end])
                 y_list.append(rul[end - 1])
 
-        return np.array(X_list), np.array(y_list)
+        if is_train:
+            return np.array(X_list), np.array(y_list)
+        return np.array(X_list), np.array(y_list), valid_engine_ids
 
     def split_calibration_set(
         self, df: pd.DataFrame, calib_fraction: float = 0.4, seed: int | None = None
