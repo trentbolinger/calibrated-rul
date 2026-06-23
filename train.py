@@ -16,6 +16,7 @@ CONFIG = {
     "sequence_length": 30,
     "rul_cap": 125,
     "calib_fraction": 0.2,
+    "calib_seed": 42,
     "model_type": "lstm",
     "input_size": len(SENSOR_COLUMNS),
     "hidden_size": 64,
@@ -58,7 +59,7 @@ def main() -> None:
     train_df = preprocessor.normalize(train_df)
 
     X_train, y_train, X_calib, y_calib, train_ids, calib_ids = preprocessor.split_calibration_set(
-        train_df, calib_fraction=CONFIG["calib_fraction"]
+        train_df, calib_fraction=CONFIG["calib_fraction"], seed=CONFIG["calib_seed"]
     )
 
     model = build_model(CONFIG)

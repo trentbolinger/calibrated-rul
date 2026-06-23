@@ -57,7 +57,7 @@ class SequencePreprocessor:
         return np.array(X_list), np.array(y_list)
 
     def split_calibration_set(
-        self, df: pd.DataFrame, calib_fraction: float = 0.2
+        self, df: pd.DataFrame, calib_fraction: float = 0.2, seed: int | None = None
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         # split by engine ID, not by window -- windows from the same engine
         # must never end up in both groups, or conformal coverage numbers
@@ -65,7 +65,10 @@ class SequencePreprocessor:
         engine_ids = df["unit_number"].unique()
         n_calib = round(len(engine_ids) * calib_fraction)
 
-        rng = np.random.default_rng()
+        # a fixed seed lets evaluate.py reproduce the exact calibration split
+        # train.py used, so conformal calibration never touches engines the
+        # model was actually fit on
+        rng = np.random.default_rng(seed)
         calib_ids = rng.choice(engine_ids, size=n_calib, replace=False)
         train_ids = np.setdiff1d(engine_ids, calib_ids)
 
