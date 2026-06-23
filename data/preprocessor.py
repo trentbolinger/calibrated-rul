@@ -57,7 +57,7 @@ class SequencePreprocessor:
         return np.array(X_list), np.array(y_list)
 
     def split_calibration_set(
-        self, df: pd.DataFrame, calib_fraction: float = 0.2, seed: int | None = None
+        self, df: pd.DataFrame, calib_fraction: float = 0.4, seed: int | None = None
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         # split by engine ID, not by window -- windows from the same engine
         # must never end up in both groups, or conformal coverage numbers

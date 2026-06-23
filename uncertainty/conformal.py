@@ -32,6 +32,8 @@ class ConformalPredictor(BaseUncertaintyWrapper):
         return is_last
 
     def predict_interval(self, model, X, alpha: float = 0.1) -> tuple[np.ndarray, np.ndarray]:
-        q = np.quantile(self.scores, 1 - alpha)
+        n = len(self.scores)
+        quantile_level = min(1.0, np.ceil((n + 1) * (1 - alpha)) / n)
+        q = np.quantile(self.scores, quantile_level)
         predictions = model.predict(X)
         return predictions - q, predictions + q

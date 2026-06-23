@@ -15,7 +15,7 @@ CONFIG = {
     "subset": "FD001",
     "sequence_length": 30,
     "rul_cap": 125,
-    "calib_fraction": 0.2,
+    "calib_fraction": 0.4,
     "calib_seed": 42,
     "model_type": "lstm",
     "input_size": len(SENSOR_COLUMNS),
