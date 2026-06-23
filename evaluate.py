@@ -98,6 +98,36 @@ def plot_conformal_intervals(preds, lower, upper, true_rul, n_samples: int = 5) 
     plt.close(fig)
 
 
+def _plot_interval_panel(ax, preds, lower, upper, true_rul, title: str, n_samples: int = 5) -> None:
+    indices = np.arange(1, n_samples + 1)
+    yerr = np.vstack([preds[:n_samples] - lower[:n_samples], upper[:n_samples] - preds[:n_samples]])
+    ax.errorbar(
+        indices, preds[:n_samples], yerr=yerr, fmt="o", color="tab:blue", capsize=5,
+        label="predicted RUL (90% interval)",
+    )
+    ax.scatter(
+        indices, true_rul[:n_samples], marker="_", s=400, color="red", linewidths=2, label="true RUL", zorder=5
+    )
+    ax.set_xlabel("test engine index")
+    ax.set_xticks(indices)
+    ax.set_title(title)
+    ax.legend()
+
+
+def plot_interval_comparison(
+    left: tuple, right: tuple, left_title: str, right_title: str, n_samples: int = 5
+) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
+
+    _plot_interval_panel(axes[0], *left, title=left_title, n_samples=n_samples)
+    _plot_interval_panel(axes[1], *right, title=right_title, n_samples=n_samples)
+    axes[0].set_ylabel("RUL (cycles)")
+
+    fig.tight_layout()
+    fig.savefig(OUTPUT_DIR / "interval_comparison.png", dpi=150)
+    plt.close(fig)
+
+
 def main() -> None:
     loader = CMAPSSLoader(CONFIG["data_dir"], subset=CONFIG["subset"])
     train_df = loader.load_train()
@@ -141,10 +171,12 @@ def main() -> None:
     # predictor, scored against subsets the calibration set never saw
     analyzer = DistributionShiftAnalyzer(model, conformal)
     results = [{"subset": CONFIG["subset"], "rmse": rmse, "picp": picp, "sharpness": sharpness}]
+    shift_test_data = {}
 
     for shift_subset in CONFIG["shift_subsets"]:
         X_shift, y_shift = load_test_subset(preprocessor, CONFIG["data_dir"], shift_subset)
         results.append(analyzer.run_shift_test(shift_subset, X_shift, y_shift, alpha=CONFIG["alpha"]))
+        shift_test_data[shift_subset] = (X_shift, y_shift)
 
     comparison_df = analyzer.compare_subsets(results)
     print("\nDistribution shift comparison:")
@@ -152,6 +184,19 @@ def main() -> None:
 
     plot_picp_by_subset(results, target_coverage=1 - CONFIG["alpha"])
     print(f"\nPICP-by-subset plot saved to {OUTPUT_DIR / 'picp_by_subset.png'}")
+
+    # same interval width, side by side, to make coverage collapse under shift visible at a glance
+    X_fd004, true_rul_fd004 = shift_test_data["FD004"]
+    preds_fd004 = model.predict(X_fd004)
+    lower_fd004, upper_fd004 = conformal.predict_interval(model, X_fd004, alpha=CONFIG["alpha"])
+
+    plot_interval_comparison(
+        (preds, lower, upper, true_rul),
+        (preds_fd004, lower_fd004, upper_fd004, true_rul_fd004),
+        left_title="FD001 (in-distribution)",
+        right_title="FD004 (distribution shift)",
+    )
+    print(f"Interval comparison plot saved to {OUTPUT_DIR / 'interval_comparison.png'}")
 
 
 if __name__ == "__main__":
